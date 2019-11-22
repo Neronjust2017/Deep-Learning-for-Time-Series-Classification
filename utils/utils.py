@@ -24,10 +24,12 @@ from utils.constants import MTS_DATASET_NAMES
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
+from sklearn.metrics import confusion_matrix
 from sklearn.preprocessing import LabelEncoder
 
 from scipy.interpolate import interp1d
 from scipy.io import loadmat
+import seaborn as sns
 
 def check_if_file_exits(file_name):
     return os.path.exists(file_name)
@@ -377,14 +379,14 @@ def transform_mts_to_ucr_format():
 def calculate_metrics(y_true, y_pred,duration,y_true_val=None,y_pred_val=None):
     res = pd.DataFrame(data = np.zeros((1,4),dtype=np.float), index=[0],
         columns=['precision','accuracy','recall','duration'])
-    res['precision'] = precision_score(y_true,y_pred,average='macro')
+    res['precision'] = precision_score(y_true,y_pred,average='macro')  #sklearn.metrics 中直接计算precision
     res['accuracy'] = accuracy_score(y_true,y_pred)
 
     if not y_true_val is None:
         # this is useful when transfer learning is used with cross validation
         res['accuracy_val'] = accuracy_score(y_true_val,y_pred_val)
 
-    res['recall'] = recall_score(y_true,y_pred,average='macro')
+    res['recall'] = recall_score(y_true,y_pred,average='macro')  #sklearn.metrics 中直接计算recall
     res['duration'] = duration
     return res
 
@@ -456,7 +458,7 @@ def generate_results_csv(output_file_name, root_dir):
 
     return res
 
-def plot_epochs_metric_loss(hist, file_name, metric='loss'):
+def plot_epochs_metric(hist, file_name, metric='loss'):
     plt.figure()
     plt.plot(hist.history[metric])
     plt.plot(hist.history['val_'+metric])
@@ -467,16 +469,41 @@ def plot_epochs_metric_loss(hist, file_name, metric='loss'):
     plt.savefig(file_name,bbox_inches='tight')
     plt.close()
 
-def plot_epochs_metric_accuracy(hist, file_name, metric='accuracy'):
-    plt.figure()
-    plt.plot(hist.history[metric])
-    plt.plot(hist.history['val_'+metric])
-    plt.title('model '+metric)
-    plt.ylabel(metric,fontsize='large')
-    plt.xlabel('epoch',fontsize='large')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig(file_name,bbox_inches='tight')
-    plt.close()
+
+def plot_confusion_matrix(cm, nb_class, output_directory, title='Confusion Matrix', cmap=plt.cm.binary):
+    tick_marks = np.array(range(nb_class)) + 0.5
+
+    np.set_printoptions(precision=2)
+    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    plt.figure(figsize=(12, 12), dpi=120)
+
+    ind_array = np.arange(nb_class)
+    x, y = np.meshgrid(ind_array, ind_array)
+
+    for x_val, y_val in zip(x.flatten(), y.flatten()):
+        c = cm_normalized[y_val][x_val]
+        if c > 0.01:
+            plt.text(x_val, y_val, "%0.2f" % (c,), color='red', fontsize=15, va='center', ha='center')
+    # offset the tick
+    plt.gca().set_xticks(tick_marks, minor=True)
+    plt.gca().set_yticks(tick_marks, minor=True)
+    plt.gca().xaxis.set_ticks_position('none')
+    plt.gca().yaxis.set_ticks_position('none')
+    plt.grid(True, which='minor', linestyle='-')
+    plt.gcf().subplots_adjust(bottom=0.15)
+
+    # show confusion matrix
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    xlocations = np.array(range(nb_class))
+    plt.xticks(xlocations, xlocations, rotation=90)
+    plt.yticks(xlocations, xlocations)
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig(output_directory, format='png')
+
 
 def save_logs_t_leNet(output_directory, hist, y_pred, y_true,duration ):
     hist_df = pd.DataFrame(hist.history)
@@ -501,31 +528,78 @@ def save_logs_t_leNet(output_directory, hist, y_pred, y_true,duration ):
     df_best_model.to_csv(output_directory+'df_best_model.csv', index=False)
 
     # plot losses
-    plot_epochs_metric_loss(hist, output_directory+'epochs_loss.png')
+    plot_epochs_metric(hist, output_directory+'epochs_loss.png')
 
 # y_pred_Val ：使用验证集上最佳模型得到的预测值
-def save_logs(output_directory, hist, y_pred, y_pred_Val, y_true,duration,lr=True,y_true_val=None,y_pred_val=None):
+def save_logs(output_directory, hist, y_pred, y_pred_val, y_true,duration,nb_classes,lr=True,y_true_val=None,y_pred_Val=None):
+
     hist_df = pd.DataFrame(hist.history)
     hist_df.to_csv(output_directory+'history.csv', index=False)
 
-    df_metrics = calculate_metrics(y_true,y_pred, duration,y_true_val,y_pred_val)
-    df_metrics.to_csv(output_directory+'df_metrics.csv', index=False)
+    df_metrics = calculate_metrics(y_true,y_pred, duration,y_true_val,y_pred_Val)
 
-    df_metrics_val = calculate_metrics(y_true,y_pred_Val,duration,y_true_val,y_pred_val)
+    df_metrics_val = calculate_metrics(y_true, y_pred_val, duration, y_true_val, y_pred_Val)
+
+    cvconfusion = np.zeros((nb_classes, nb_classes, 2))
+    cvconfusion[:, :, 0] = confusion_matrix(y_true, y_pred)
+    cvconfusion[:, :, 1] = confusion_matrix(y_true, y_pred_val)
+
+    # cvconfusion = np.zeros((nb_classes,nb_classes))
+    # cvconfusion = confusion_matrix(y_true,y_pred)
+    # cvconfusion_val = np.zeros((nb_classes,nb_classes))
+    # cvconfusion_val = confusion_matrix(y_true,y_pred)
+
+    plot_confusion_matrix(cvconfusion[:, :, 0],nb_classes, output_directory+'confusion_matrix.png')
+    plot_confusion_matrix(cvconfusion[:, :, 1], nb_classes, output_directory + 'confusion_matrix_val.png')
+
+
+    F1 = np.zeros((nb_classes, 1, 2))
+    Precision = np.zeros((nb_classes, 1, 2))
+    Recall = np.zeros((nb_classes, 1, 2))
+
+    for counter in range(2):
+        for i in range(nb_classes):
+            F1[i, 0,counter] = 2 * cvconfusion[i, i, counter] / (
+                        np.sum(cvconfusion[i, :, counter]) + np.sum(cvconfusion[:, i, counter]))
+            # print("test F1 measure for {} rhythm: {:1.4f}".format(classes[i], F1[i, 0]))
+            Precision[i, 0, counter] = cvconfusion[i, i, counter] / np.sum(cvconfusion[:, i, counter])
+            Recall[i, 0, counter] = cvconfusion[i, i, counter] / np.sum(cvconfusion[i, :, counter])
+            # Accuracy += cvconfusion[i, i, counter] / np.sum(cvconfusion[:, :, counter])
+            if counter==0:
+                df_metrics['precison_'+str(i)] = Precision[i,0,counter]
+                df_metrics['recall_'+str(i)] = Recall[i,0,counter]
+                df_metrics['f1_'+str(i)] = F1[i,0,counter]
+            else:
+                df_metrics_val['precison_' + str(i)] = Precision[i,0,counter]
+                df_metrics_val['recall_' + str(i)] = Recall[i,0,counter]
+                df_metrics_val['f1_' + str(i)] = F1[i,0,counter]
+
+    df_metrics.to_csv(output_directory+'df_metrics.csv', index=False)
     df_metrics_val.to_csv(output_directory + 'df_metrics_val.csv', index=False)
 
 
     index_best_model = hist_df['loss'].idxmin()
     row_best_model = hist_df.loc[index_best_model]
 
-    df_best_model = pd.DataFrame(data = np.zeros((1,6),dtype=np.float) , index = [0],
-        columns=['best_model_train_loss', 'best_model_val_loss', 'best_model_train_acc',
-        'best_model_val_acc', 'best_model_learning_rate','best_model_nb_epoch'])
+    df_best_model = pd.DataFrame(data = np.zeros((1,12),dtype=np.float) , index = [0],
+        columns=['best_model_train_loss', 'best_model_val_loss',
+                 'best_model_train_acc','best_model_val_acc',
+                 'best_model_train_precision','best_model_val_precision',
+                 'best_model_train_recall','best_model_val_recall',
+                 'best_model_train_f1','best_model_val_f1',
+                 'best_model_learning_rate','best_model_nb_epoch'])
 
     df_best_model['best_model_train_loss'] = row_best_model['loss']
     df_best_model['best_model_val_loss'] = row_best_model['val_loss']
     df_best_model['best_model_train_acc'] = row_best_model['accuracy']
     df_best_model['best_model_val_acc'] = row_best_model['val_accuracy']
+    df_best_model['best_model_train_precision'] = row_best_model['precision']
+    df_best_model['best_model_val_precision'] = row_best_model['val_precision']
+    df_best_model['best_model_train_recall'] = row_best_model['recall']
+    df_best_model['best_model_val_recall'] = row_best_model['val_recall']
+    df_best_model['best_model_train_f1'] = row_best_model['f1']
+    df_best_model['best_model_val_f1'] = row_best_model['val_f1']
+
     if lr == True:
         df_best_model['best_model_learning_rate'] = row_best_model['lr']
     df_best_model['best_model_nb_epoch'] = index_best_model
@@ -536,14 +610,24 @@ def save_logs(output_directory, hist, y_pred, y_pred_Val, y_true,duration,lr=Tru
     index_best_model_val = hist_df['val_loss'].idxmin()
     row_best_model_val = hist_df.loc[index_best_model_val]
 
-    df_best_model_val  = pd.DataFrame(data=np.zeros((1, 6), dtype=np.float), index=[0],
-                                 columns=['best_model_train_loss', 'best_model_val_loss', 'best_model_train_acc',
-                                          'best_model_val_acc', 'best_model_learning_rate', 'best_model_nb_epoch'])
+    df_best_model_val  = pd.DataFrame(data=np.zeros((1, 12), dtype=np.float), index=[0],
+                                      columns=['best_model_train_loss', 'best_model_val_loss',
+                                               'best_model_train_acc', 'best_model_val_acc',
+                                               'best_model_train_precision', 'best_model_val_precision',
+                                               'best_model_train_recall', 'best_model_val_recall',
+                                               'best_model_train_f1', 'best_model_val_f1',
+                                               'best_model_learning_rate', 'best_model_nb_epoch'])
 
     df_best_model_val ['best_model_train_loss'] = row_best_model_val ['loss']
     df_best_model_val ['best_model_val_loss'] = row_best_model_val ['val_loss']
     df_best_model_val ['best_model_train_acc'] = row_best_model_val ['accuracy']
     df_best_model_val ['best_model_val_acc'] = row_best_model_val ['val_accuracy']
+    df_best_model_val['best_model_train_precision'] = row_best_model_val['precision']
+    df_best_model_val['best_model_val_precision'] = row_best_model_val['val_precision']
+    df_best_model_val['best_model_train_recall'] = row_best_model_val['recall']
+    df_best_model_val['best_model_val_recall'] = row_best_model_val['val_recall']
+    df_best_model_val['best_model_train_f1'] = row_best_model_val['f1']
+    df_best_model_val['best_model_val_f1'] = row_best_model_val['val_f1']
     if lr == True:
         df_best_model_val ['best_model_learning_rate'] = row_best_model_val ['lr']
     df_best_model_val ['best_model_nb_epoch'] = index_best_model_val
@@ -553,8 +637,13 @@ def save_logs(output_directory, hist, y_pred, y_pred_Val, y_true,duration,lr=Tru
     # for FCN there is no hyperparameters fine tuning - everything is static in code
 
     # plot losses
-    plot_epochs_metric_loss(hist, output_directory+'epochs_loss.png')
-    plot_epochs_metric_accuracy(hist, output_directory+'epochs_accuracy.png')
+    plot_epochs_metric(hist, output_directory+'epochs_loss.png')
+    plot_epochs_metric(hist, output_directory+'epochs_accuracy.png',metric='accuracy')
+    plot_epochs_metric(hist, output_directory + 'epochs_precision.png', metric='precision')
+    plot_epochs_metric(hist, output_directory + 'epochs_recall.png', metric='recall')
+    plot_epochs_metric(hist, output_directory + 'epochs_f1.png',metric='f1')
+    # plot confusion matrix
+
 
     return df_metrics
 

@@ -3,8 +3,10 @@ import keras
 import numpy as np 
 import pandas as pd 
 import time 
-
+from keras.callbacks import  TensorBoard
+# 如果是 from tensorflow.keras.callbacks import  TensorBoard 会报错： Model' object has no attribute 'run_eagerly'
 from utils.utils import save_logs
+from utils.metric import precision,recall,f1
 
 class Classifier_FCN:
 
@@ -39,7 +41,7 @@ class Classifier_FCN:
 		model = keras.models.Model(inputs=input_layer, outputs=output_layer)
 
 		model.compile(loss='categorical_crossentropy', optimizer = keras.optimizers.Adam(), 
-			metrics=['accuracy'])
+			metrics=['accuracy',precision,recall,f1])
 
 		# reduce learning rate    min_lr :学习率下限
 		reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='loss', factor=0.5, patience=50, 
@@ -56,14 +58,18 @@ class Classifier_FCN:
 		model_checkpoint_val = keras.callbacks.ModelCheckpoint(filepath=file_path_val, monitor='val_loss',
 														   save_best_only=True)
 
-		self.callbacks = [reduce_lr,model_checkpoint,model_checkpoint_val]
+		# tensorboard 进行可视化
+
+		tbCallBack = TensorBoard(log_dir='model',histogram_freq=1,write_grads=True)
+
+		self.callbacks = [reduce_lr,model_checkpoint,model_checkpoint_val,tbCallBack]
 
 		return model 
 
-	def fit(self, x_train, y_train, x_val, y_val,y_true): 
+	def fit(self, x_train, y_train, x_val, y_val,y_true,nb_classes):
 		# x_val and y_val are only used to monitor the test loss and NOT for training  
 		batch_size = 16
-		nb_epochs = 2000
+		nb_epochs = 100
 
 		# 将测试集划分为val和test
 		print(x_val.shape[0] / 2)
@@ -103,9 +109,9 @@ class Classifier_FCN:
 		
 		duration = time.time() - start_time
 
-		model = keras.models.load_model(self.output_directory+'best_model.hdf5')
+		model = keras.models.load_model(self.output_directory+'best_model.hdf5',custom_objects={'precision': precision,'recall':recall,'f1':f1})
 
-		model_val=keras.models.load_model(self.output_directory+'best_model_val.hdf5')
+		model_val=keras.models.load_model(self.output_directory+'best_model_val.hdf5',custom_objects={'precision': precision,'recall':recall,'f1':f1})
 
 		# y_pred = model.predict(x_val)
 		# y_pred_val = model_val.predict(x_val)
@@ -117,7 +123,7 @@ class Classifier_FCN:
 		y_pred = np.argmax(y_pred , axis=1)
 		y_pred_val = np.argmax(y_pred_val,axis=1)
 
-		save_logs(self.output_directory, hist, y_pred, y_pred_val, y_true, duration)
+		save_logs(self.output_directory, hist, y_pred, y_pred_val, y_true, duration,nb_classes)
 
 		keras.backend.clear_session()
 

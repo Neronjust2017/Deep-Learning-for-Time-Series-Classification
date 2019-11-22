@@ -471,7 +471,7 @@ def plot_epochs_metric(hist, file_name, metric='loss'):
 
 
 def plot_confusion_matrix(cm, nb_class, output_directory, title='Confusion Matrix', cmap=plt.cm.binary):
-    tick_marks = np.array(range(nb_class)) + 0.5
+    tick_marks = np.array(range(nb_class))
 
     np.set_printoptions(precision=2)
     cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
@@ -486,20 +486,23 @@ def plot_confusion_matrix(cm, nb_class, output_directory, title='Confusion Matri
         if c > 0.01:
             plt.text(x_val, y_val, "%0.2f" % (c,), color='red', fontsize=15, va='center', ha='center')
     # offset the tick
-    plt.gca().set_xticks(tick_marks, minor=True)
-    plt.gca().set_yticks(tick_marks, minor=True)
-    plt.gca().xaxis.set_ticks_position('none')
-    plt.gca().yaxis.set_ticks_position('none')
+    plt.gca().set_xticks(tick_marks)
+    plt.gca().set_yticks(tick_marks)
+    plt.gca().xaxis.set_ticks_position('top')
+    plt.gca().yaxis.set_ticks_position('left')
     plt.grid(True, which='minor', linestyle='-')
     plt.gcf().subplots_adjust(bottom=0.15)
 
     # show confusion matrix
+
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     plt.colorbar()
-    xlocations = np.array(range(nb_class))
-    plt.xticks(xlocations, xlocations, rotation=90)
-    plt.yticks(xlocations, xlocations)
+
+    # xlocations = np.array(range(nb_class))
+    # plt.xticks(xlocations, xlocations, rotation=90)
+    # plt.yticks(xlocations, xlocations)
+
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     plt.savefig(output_directory, format='png')

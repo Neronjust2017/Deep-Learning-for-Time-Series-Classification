@@ -548,6 +548,13 @@ def save_logs(output_directory, hist, y_pred, y_pred_val, y_true,duration,nb_cla
     # cvconfusion = confusion_matrix(y_true,y_pred)
     # cvconfusion_val = np.zeros((nb_classes,nb_classes))
     # cvconfusion_val = confusion_matrix(y_true,y_pred)
+    for counter in range(2):
+        classes = list(np.array(range(nb_classes)))
+        df_confusion = pd.DataFrame(data=cvconfusion[:,:,counter],index=classes,columns=classes)
+        if counter==0:
+            df_confusion.to_csv(output_directory+'confusion_matrix.csv')
+        else:
+            df_confusion.to_csv(output_directory+'confusion_matrix_val.csv')
 
     plot_confusion_matrix(cvconfusion[:, :, 0],nb_classes, output_directory+'confusion_matrix.png')
     plot_confusion_matrix(cvconfusion[:, :, 1], nb_classes, output_directory + 'confusion_matrix_val.png')

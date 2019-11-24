@@ -17,6 +17,7 @@ def fit_classifier():
     x_test = datasets_dict[dataset_name][2]
     y_test = datasets_dict[dataset_name][3]
 
+    # num of label classes
     nb_classes = len(np.unique(np.concatenate((y_train,y_test),axis =0)))
 
     # make the min to zero of labels
@@ -79,6 +80,9 @@ def create_classifier(classifier_name, input_shape, nb_classes, output_directory
     if classifier_name=='resnet_v2':
         from classifiers import  resnet_v2
         return resnet_v2.Classifier_RESNET_V2(output_directory,input_shape,nb_classes,verbose,type=1)
+    if classifier_name=='rnn':
+        from classifiers import rnn
+        return rnn.Classifier_RNN(output_directory,input_shape, nb_classes, verbose)
 ############################################### main 
 
 # change this directory for your machine

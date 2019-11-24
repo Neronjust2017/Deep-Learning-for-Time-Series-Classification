@@ -12,7 +12,7 @@ matplotlib.rcParams['font.sans-serif'] = 'Arial'
 import os
 import operator
 import h5py
-import torch
+#import torch
 import utils
 
 from utils.constants import UNIVARIATE_DATASET_NAMES as DATASET_NAMES
@@ -42,7 +42,7 @@ def readucr(filename):
 
 def create_directory(directory_path):
     if os.path.exists(directory_path):
-        print("sdsdsd")
+        print(directory_path + "   nvis exists")
         return None
     else:
         try:

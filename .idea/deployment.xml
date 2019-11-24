@@ -5,7 +5,32 @@
       <paths name="liutao@202.117.54.91">
         <serverdata>
           <mappings>
+<<<<<<< HEAD
             <mapping deploy="/project/Deep-Learning-for-Time-Series-Classification" local="$PROJECT_DIR$" />
+=======
+            <mapping deploy="/home/weiyuhua/TimeSeriesClassification" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="weiyuhua@202.117.54.91:22 (1)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="weiyuhua@202.117.54.91:22 (2)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="weiyuhua@202.117.54.91:22 (3)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+>>>>>>> 34cefedeeef4aafd4aeb5ac65dc2ef1750ddff4a
           </mappings>
         </serverdata>
       </paths>

@@ -9,7 +9,9 @@ from utils.utils import viz_cam
 
 import numpy as np
 import sys
-import sklearn 
+import sklearn
+
+import os
 
 def fit_classifier(): 
     x_train = datasets_dict[dataset_name][0]
@@ -41,7 +43,7 @@ def fit_classifier():
 
     classifier = create_classifier(classifier_name,input_shape, nb_classes, output_directory)
 
-    classifier.fit(x_train,y_train,x_test,y_test, y_true)
+    classifier.fit(x_train,y_train,x_test,y_test, y_true,nb_classes)
 
 def create_classifier(classifier_name, input_shape, nb_classes, output_directory, verbose = True):
     if classifier_name=='fcn': 
@@ -87,6 +89,8 @@ def create_classifier(classifier_name, input_shape, nb_classes, output_directory
 
 # change this directory for your machine
 # it should contain the archive folder containing both univariate and multivariate archives
+
+os.environ['CUDA_VISIBLE_DEVICES']='2'
 root_dir = 'data'
 
 if sys.argv[1]=='transform_mts_to_ucr_format':
@@ -129,3 +133,4 @@ else:
 
         # the creation of this directory means
         create_directory(output_directory+'/DONE')
+

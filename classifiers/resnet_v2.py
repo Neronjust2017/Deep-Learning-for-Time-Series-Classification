@@ -181,7 +181,7 @@ class Classifier_RESNET_V2:
         log_path = self.output_directory + 'log.csv'
 
         callbacks = [
-            EarlyStopping(monitor='val_loss', patience=5, verbose=1),
+            EarlyStopping(monitor='val_loss', patience=50, verbose=1),
             AdvancedLearnignRateScheduler(monitor='val_loss', patience=3, verbose=1, mode='auto',
                                           decayRatio=0.1),
             ModelCheckpoint(filepath=file_path_val,
